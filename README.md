@@ -30,16 +30,7 @@ docker compose up -d
 
 This starts PostgreSQL on `localhost:5432` and Redis on `6379`. Default DB: `tomoola`, user `postgres`, password `password`.
 
-### 2. Environment variables
-
-Copy the example env and set at least `DATABASE_URL` and `JWT_SECRET`:
-
-```bash
-cp .env.example services/api/.env
-# Edit services/api/.env — set DATABASE_URL (e.g. postgresql://postgres:password@localhost:5432/tomoola) and JWT_SECRET
-```
-
-### 3. One-time setup (install, DB, seed, build)
+### 2. One-time setup (env, install, DB, seed, build)
 
 From the repo root:
 
@@ -47,9 +38,11 @@ From the repo root:
 pnpm quick-setup
 ```
 
-This runs: install → Prisma generate → migrations → seed (art forms + admin user) → build.
+This runs: copy `.env.example` → `services/api/.env` and `packages/db/.env` → install → Prisma generate → migrations → seed (art forms + admin user) → build.
 
-### 4. Start the app
+If you use Docker for Postgres, set `DATABASE_URL` in `services/api/.env` to `postgresql://postgres:password@localhost:5432/tomoola` (and set `JWT_SECRET`) before or after running quick-setup.
+
+### 3. Start the app
 
 ```bash
 pnpm dev

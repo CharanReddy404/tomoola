@@ -6,16 +6,21 @@ echo "→ ToMoola quick-setup (install, DB, build)"
 echo "  Ensure PostgreSQL is running (e.g. docker compose up -d)"
 echo ""
 
-echo "1/5 Installing dependencies..."
+echo "1/6 Copying .env.example to services/api and packages/db..."
+cp .env.example services/api/.env
+cp .env.example packages/db/.env
+echo "   services/api/.env and packages/db/.env created/updated"
+
+echo "2/6 Installing dependencies..."
 pnpm install
 
-echo "2/5 Generating Prisma client..."
+echo "3/6 Generating Prisma client..."
 pnpm --filter @tomoola/api db:generate
 
-echo "3/5 Running migrations..."
+echo "4/6 Running migrations..."
 pnpm --filter @tomoola/api db:migrate
 
-echo "4/5 Seeding database..."
+echo "5/6 Seeding database..."
 set -a
 [ -f services/api/.env ] && . services/api/.env
 [ -f packages/db/.env ] && . packages/db/.env
@@ -28,7 +33,7 @@ else
   echo "   Seed skipped (run manually: psql \$DATABASE_URL -f packages/db/prisma/seed.sql)"
 fi
 
-echo "5/5 Building..."
+echo "6/6 Building..."
 pnpm build
 
 echo ""
