@@ -1,0 +1,26 @@
+{
+  "name": "tomoola",
+  "private": true,
+  "scripts": {
+    "quick-setup": "bash scripts/quick-setup.sh",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "clean": "turbo clean"
+  },
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10.15.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}
