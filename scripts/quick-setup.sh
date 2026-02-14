@@ -21,10 +21,11 @@ echo "4/6 Running migrations..."
 pnpm --filter @tomoola/api db:migrate
 
 echo "5/6 Seeding database..."
-set -a
-[ -f services/api/.env ] && . services/api/.env
-[ -f packages/db/.env ] && . packages/db/.env
-set +a
+DATABASE_URL=""
+if [ -f services/api/.env ]; then
+  DATABASE_URL=$(grep -E '^DATABASE_URL=' services/api/.env 2>/dev/null | sed 's/^DATABASE_URL=//' | tr -d '\r' | head -1)
+fi
+[ -z "$DATABASE_URL" ] && [ -f packages/db/.env ] && DATABASE_URL=$(grep -E '^DATABASE_URL=' packages/db/.env 2>/dev/null | sed 's/^DATABASE_URL=//' | tr -d '\r' | head -1)
 if [ -n "$DATABASE_URL" ] && command -v psql >/dev/null 2>&1; then
   psql "$DATABASE_URL" -f packages/db/prisma/seed.sql --quiet 2>/dev/null && echo "   Seed OK" || true
 elif docker exec tomoola-db psql -U postgres -d tomoola -f - < packages/db/prisma/seed.sql 2>/dev/null; then
