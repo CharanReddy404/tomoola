@@ -2,12 +2,15 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from "@nestjs/common";
 import { BookingStatus } from "@tomoola/db";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async getStats() {
@@ -55,29 +58,43 @@ export class AdminService {
   async approveArtist(artistProfileId: string) {
     const profile = await this.prisma.artistProfile.findUnique({
       where: { id: artistProfileId },
+      include: { user: true },
     });
     if (!profile) {
       throw new NotFoundException("Artist profile not found");
     }
 
-    return this.prisma.artistProfile.update({
+    const updated = await this.prisma.artistProfile.update({
       where: { id: artistProfileId },
       data: { isApproved: true },
     });
+
+    this.logger.log(
+      `Artist profile ${artistProfileId} (${profile.groupName}) approved. User: ${profile.userId}`,
+    );
+
+    return updated;
   }
 
   async rejectArtist(artistProfileId: string) {
     const profile = await this.prisma.artistProfile.findUnique({
       where: { id: artistProfileId },
+      include: { user: true },
     });
     if (!profile) {
       throw new NotFoundException("Artist profile not found");
     }
 
-    return this.prisma.artistProfile.update({
+    const updated = await this.prisma.artistProfile.update({
       where: { id: artistProfileId },
       data: { isApproved: false, isActive: false },
     });
+
+    this.logger.log(
+      `Artist profile ${artistProfileId} (${profile.groupName}) rejected. User: ${profile.userId}`,
+    );
+
+    return updated;
   }
 
   async getAllBookings(filters?: { status?: string }) {

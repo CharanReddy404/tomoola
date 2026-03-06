@@ -1,7 +1,10 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { HealthController } from "./health.controller";
 import { PrismaModule } from "./prisma/prisma.module";
+import { RedisModule } from "./redis/redis.module";
 import { AuthModule } from "./auth/auth.module";
 import { ArtistsModule } from "./artists/artists.module";
 import { ArtFormsModule } from "./art-forms/art-forms.module";
@@ -18,7 +21,14 @@ import { NotificationsModule } from "./notifications/notifications.module";
       isGlobal: true,
       envFilePath: [".env.local", ".env"],
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 60 seconds
+        limit: 10, // 10 requests per 60 seconds
+      },
+    ]),
     PrismaModule,
+    RedisModule,
     AuthModule,
     ArtistsModule,
     ArtFormsModule,
@@ -30,5 +40,11 @@ import { NotificationsModule } from "./notifications/notifications.module";
     NotificationsModule,
   ],
   controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

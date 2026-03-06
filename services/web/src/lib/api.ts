@@ -1,3 +1,15 @@
+import type {
+  User,
+  ArtistProfile,
+  ArtForm,
+  Booking,
+  Review,
+  Media,
+  AdminStats,
+  UploadUrlResponse,
+  PaginatedResponse,
+} from "@tomoola/shared";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 async function fetchAPI<T>(
@@ -32,65 +44,65 @@ async function fetchAPI<T>(
 export const api = {
   // Auth
   sendOtp: (phone: string) =>
-    fetchAPI<{ message: string }>("/auth/send-otp", {
+    fetchAPI<{ success: boolean; message: string }>("/auth/send-otp", {
       method: "POST",
       body: JSON.stringify({ phone }),
     }),
   verifyOtp: (phone: string, otp: string, role?: string) =>
-    fetchAPI<{ token: string; user: any }>("/auth/verify-otp", {
+    fetchAPI<{ token: string; user: User }>("/auth/verify-otp", {
       method: "POST",
       body: JSON.stringify({ phone, otp, role }),
     }),
-  getMe: () => fetchAPI<any>("/auth/me"),
+  getMe: () => fetchAPI<User>("/auth/me"),
 
   // Art Forms
-  getArtForms: () => fetchAPI<any[]>("/art-forms"),
-  getArtFormBySlug: (slug: string) => fetchAPI<any>(`/art-forms/${slug}`),
+  getArtForms: () => fetchAPI<ArtForm[]>("/art-forms"),
+  getArtFormBySlug: (slug: string) => fetchAPI<ArtForm>(`/art-forms/${slug}`),
 
   // Artists
   getArtists: (params?: Record<string, string>) => {
     const query = params ? "?" + new URLSearchParams(params).toString() : "";
-    return fetchAPI<any[]>(`/artists${query}`);
+    return fetchAPI<PaginatedResponse<ArtistProfile>>(`/artists${query}`);
   },
-  getArtist: (id: string) => fetchAPI<any>(`/artists/${id}`),
+  getArtist: (id: string) => fetchAPI<ArtistProfile>(`/artists/${id}`),
   getArtistsByArtForm: (slug: string) =>
-    fetchAPI<any[]>(`/artists/art-form/${slug}`),
-  createArtistProfile: (data: any) =>
-    fetchAPI<any>("/artists", { method: "POST", body: JSON.stringify(data) }),
-  updateArtistProfile: (id: string, data: any) =>
-    fetchAPI<any>(`/artists/${id}`, {
+    fetchAPI<ArtistProfile[]>(`/artists/art-form/${slug}`),
+  createArtistProfile: (data: Partial<ArtistProfile>) =>
+    fetchAPI<ArtistProfile>("/artists", { method: "POST", body: JSON.stringify(data) }),
+  updateArtistProfile: (id: string, data: Partial<ArtistProfile>) =>
+    fetchAPI<ArtistProfile>(`/artists/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
 
   // Bookings
-  createBooking: (data: any) =>
-    fetchAPI<any>("/bookings", { method: "POST", body: JSON.stringify(data) }),
-  getBooking: (id: string) => fetchAPI<any>(`/bookings/${id}`),
-  getMyBookings: () => fetchAPI<any[]>("/bookings/my"),
-  getArtistBookings: () => fetchAPI<any[]>("/bookings/artist"),
+  createBooking: (data: Partial<Booking>) =>
+    fetchAPI<Booking>("/bookings", { method: "POST", body: JSON.stringify(data) }),
+  getBooking: (id: string) => fetchAPI<Booking>(`/bookings/${id}`),
+  getMyBookings: () => fetchAPI<PaginatedResponse<Booking>>("/bookings/my"),
+  getArtistBookings: () => fetchAPI<PaginatedResponse<Booking>>("/bookings/artist"),
   acceptBooking: (id: string) =>
-    fetchAPI<any>(`/bookings/${id}/accept`, { method: "PATCH" }),
+    fetchAPI<Booking>(`/bookings/${id}/accept`, { method: "PATCH" }),
   declineBooking: (id: string) =>
-    fetchAPI<any>(`/bookings/${id}/decline`, { method: "PATCH" }),
+    fetchAPI<Booking>(`/bookings/${id}/decline`, { method: "PATCH" }),
   completeBooking: (id: string) =>
-    fetchAPI<any>(`/bookings/${id}/complete`, { method: "PATCH" }),
+    fetchAPI<Booking>(`/bookings/${id}/complete`, { method: "PATCH" }),
   cancelBooking: (id: string) =>
-    fetchAPI<any>(`/bookings/${id}/cancel`, { method: "PATCH" }),
+    fetchAPI<Booking>(`/bookings/${id}/cancel`, { method: "PATCH" }),
 
   // Availability
   blockDates: (dates: string[]) =>
-    fetchAPI<any>("/availability", {
+    fetchAPI<{ success: boolean }>("/availability", {
       method: "POST",
       body: JSON.stringify({ dates }),
     }),
   unblockDates: (dates: string[]) =>
-    fetchAPI<any>("/availability", {
+    fetchAPI<{ success: boolean }>("/availability", {
       method: "DELETE",
       body: JSON.stringify({ dates }),
     }),
   getAvailability: (artistProfileId: string, year: number, month: number) =>
-    fetchAPI<any>(
+    fetchAPI<string[]>(
       `/availability/${artistProfileId}?year=${year}&month=${month}`
     ),
 
@@ -100,58 +112,58 @@ export const api = {
     rating: number;
     comment?: string;
   }) =>
-    fetchAPI<any>("/reviews", { method: "POST", body: JSON.stringify(data) }),
+    fetchAPI<Review>("/reviews", { method: "POST", body: JSON.stringify(data) }),
   getArtistReviews: (artistProfileId: string) =>
-    fetchAPI<any[]>(`/reviews/artist/${artistProfileId}`),
+    fetchAPI<Review[]>(`/reviews/artist/${artistProfileId}`),
 
   // Media
   addMedia: (data: { type: string; url: string; caption?: string }) =>
-    fetchAPI<any>("/media", { method: "POST", body: JSON.stringify(data) }),
+    fetchAPI<Media>("/media", { method: "POST", body: JSON.stringify(data) }),
   deleteMedia: (id: string) =>
-    fetchAPI<any>(`/media/${id}`, { method: "DELETE" }),
+    fetchAPI<{ success: boolean }>(`/media/${id}`, { method: "DELETE" }),
   getArtistMedia: (artistProfileId: string) =>
-    fetchAPI<any[]>(`/media/artist/${artistProfileId}`),
+    fetchAPI<Media[]>(`/media/artist/${artistProfileId}`),
   getUploadUrl: (filename: string, contentType: string) =>
-    fetchAPI<{ uploadUrl: string; publicUrl: string; key: string }>("/media/upload-url", {
+    fetchAPI<UploadUrlResponse>("/media/upload-url", {
       method: "POST",
       body: JSON.stringify({ filename, contentType }),
     }),
 
   // Admin
-  getAdminStats: () => fetchAPI<any>("/admin/stats"),
-  getPendingArtists: () => fetchAPI<any[]>("/admin/artists/pending"),
+  getAdminStats: () => fetchAPI<AdminStats>("/admin/stats"),
+  getPendingArtists: () => fetchAPI<ArtistProfile[]>("/admin/artists/pending"),
   approveArtist: (id: string) =>
-    fetchAPI<any>(`/admin/artists/${id}/approve`, { method: "PATCH" }),
+    fetchAPI<ArtistProfile>(`/admin/artists/${id}/approve`, { method: "PATCH" }),
   rejectArtist: (id: string) =>
-    fetchAPI<any>(`/admin/artists/${id}/reject`, { method: "PATCH" }),
+    fetchAPI<ArtistProfile>(`/admin/artists/${id}/reject`, { method: "PATCH" }),
   getAdminBookings: (status?: string) =>
-    fetchAPI<any[]>(`/admin/bookings${status ? `?status=${status}` : ""}`),
-  getAdminArtForms: () => fetchAPI<any[]>("/admin/art-forms"),
-  createArtForm: (data: any) =>
-    fetchAPI<any>("/admin/art-forms", {
+    fetchAPI<Booking[]>(`/admin/bookings${status ? `?status=${status}` : ""}`),
+  getAdminArtForms: () => fetchAPI<ArtForm[]>("/admin/art-forms"),
+  createArtForm: (data: Partial<ArtForm>) =>
+    fetchAPI<ArtForm>("/admin/art-forms", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateArtForm: (id: string, data: any) =>
-    fetchAPI<any>(`/admin/art-forms/${id}`, {
+  updateArtForm: (id: string, data: Partial<ArtForm>) =>
+    fetchAPI<ArtForm>(`/admin/art-forms/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
   deleteArtForm: (id: string) =>
-    fetchAPI<any>(`/admin/art-forms/${id}`, { method: "DELETE" }),
+    fetchAPI<{ success: boolean }>(`/admin/art-forms/${id}`, { method: "DELETE" }),
 
   // Moderation
-  getFlaggedContent: () => fetchAPI<any>("/admin/moderation"),
+  getFlaggedContent: () => fetchAPI<{ media: Media[]; reviews: Review[] }>("/admin/moderation"),
   flagMedia: (id: string, reason?: string) =>
-    fetchAPI<any>(`/admin/moderation/media/${id}/flag`, { method: "PATCH", body: JSON.stringify({ reason }) }),
+    fetchAPI<Media>(`/admin/moderation/media/${id}/flag`, { method: "PATCH", body: JSON.stringify({ reason }) }),
   unflagMedia: (id: string) =>
-    fetchAPI<any>(`/admin/moderation/media/${id}/unflag`, { method: "PATCH" }),
+    fetchAPI<Media>(`/admin/moderation/media/${id}/unflag`, { method: "PATCH" }),
   removeMedia: (id: string) =>
-    fetchAPI<any>(`/admin/moderation/media/${id}/remove`, { method: "PATCH" }),
+    fetchAPI<Media>(`/admin/moderation/media/${id}/remove`, { method: "PATCH" }),
   flagReview: (id: string, reason?: string) =>
-    fetchAPI<any>(`/admin/moderation/reviews/${id}/flag`, { method: "PATCH", body: JSON.stringify({ reason }) }),
+    fetchAPI<Review>(`/admin/moderation/reviews/${id}/flag`, { method: "PATCH", body: JSON.stringify({ reason }) }),
   unflagReview: (id: string) =>
-    fetchAPI<any>(`/admin/moderation/reviews/${id}/unflag`, { method: "PATCH" }),
+    fetchAPI<Review>(`/admin/moderation/reviews/${id}/unflag`, { method: "PATCH" }),
   removeReview: (id: string) =>
-    fetchAPI<any>(`/admin/moderation/reviews/${id}/remove`, { method: "PATCH" }),
+    fetchAPI<Review>(`/admin/moderation/reviews/${id}/remove`, { method: "PATCH" }),
 };

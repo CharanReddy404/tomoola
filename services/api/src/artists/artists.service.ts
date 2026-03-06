@@ -86,7 +86,13 @@ export class ArtistsService {
     artForm?: string;
     city?: string;
     search?: string;
+    page?: number;
+    limit?: number;
   }) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 20;
+    const skip = (page - 1) * limit;
+
     const where: Record<string, unknown> = {
       isApproved: true,
       isActive: true,
@@ -106,17 +112,22 @@ export class ArtistsService {
       where.groupName = { contains: filters.search, mode: "insensitive" };
     }
 
-    const artists = await this.prisma.artistProfile.findMany({
-      where,
-      include: {
-        user: true,
-        artForms: { include: { artForm: true } },
-        media: { where: { removedAt: null } },
-        reviews: { where: { removedAt: null } },
-      },
-    });
+    const [artists, total] = await Promise.all([
+      this.prisma.artistProfile.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: true,
+          artForms: { include: { artForm: true } },
+          media: { where: { removedAt: null } },
+          reviews: { where: { removedAt: null } },
+        },
+      }),
+      this.prisma.artistProfile.count({ where }),
+    ]);
 
-    return artists.map((artist) => {
+    const artistsWithRating = artists.map((artist) => {
       const avgRating =
         artist.reviews.length > 0
           ? artist.reviews.reduce((sum, r) => sum + r.rating, 0) /
@@ -124,6 +135,16 @@ export class ArtistsService {
           : null;
       return { ...artist, averageRating: avgRating };
     });
+
+    return {
+      data: artistsWithRating,
+      meta: {
+        total,
+        page,
+        limit,
+        pageCount: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {

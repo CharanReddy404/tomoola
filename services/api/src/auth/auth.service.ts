@@ -1,28 +1,30 @@
 import { Injectable, UnauthorizedException, Logger } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { randomInt } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import { RedisService } from "../redis/redis.service";
 import { UserRole } from "@tomoola/db";
-
-interface OtpEntry {
-  otp: string;
-  expiresAt: Date;
-}
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly otpStore = new Map<string, OtpEntry>();
+  private readonly OTP_EXPIRY_SECONDS = 300; // 5 minutes
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly redis: RedisService,
   ) {}
 
   async sendOtp(phone: string): Promise<{ success: boolean; message: string }> {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const otp = randomInt(100000, 999999).toString();
 
-    this.otpStore.set(phone, { otp, expiresAt });
+    await this.redis.setWithExpiry(
+      `otp:${phone}`,
+      otp,
+      this.OTP_EXPIRY_SECONDS,
+    );
+
     if (process.env.NODE_ENV !== "production") {
       this.logger.log(`[DEV] OTP for ${phone}: ${otp}`);
     }
@@ -35,13 +37,11 @@ export class AuthService {
     otp: string,
     role?: "CLIENT" | "ARTIST" | "ADMIN",
   ): Promise<{ token: string; user: Record<string, unknown> }> {
-    const entry = this.otpStore.get(phone);
+    const storedOtp = await this.redis.getAndDelete(`otp:${phone}`);
 
-    if (!entry || entry.otp !== otp || entry.expiresAt < new Date()) {
+    if (!storedOtp || storedOtp !== otp) {
       throw new UnauthorizedException("Invalid or expired OTP");
     }
-
-    this.otpStore.delete(phone);
 
     let user = await this.prisma.user.findUnique({ where: { phone } });
 

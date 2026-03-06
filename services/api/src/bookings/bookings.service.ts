@@ -58,15 +58,21 @@ export class BookingsService {
       include: { user: true },
     });
     if (artist) {
-      this.notificationsService.notifyArtistNewBooking({
-        artistPhone: artist.user.phone,
-        artistEmail: artist.user.email || undefined,
-        artistName: artist.groupName,
-        clientName: "Client",
-        eventType: data.eventType,
-        eventDate: data.eventDate,
-        eventLocation: data.eventLocation,
-      });
+      try {
+        await this.notificationsService.notifyArtistNewBooking({
+          artistPhone: artist.user.phone,
+          artistEmail: artist.user.email || undefined,
+          artistName: artist.groupName,
+          clientName: "Client",
+          eventType: data.eventType,
+          eventDate: data.eventDate,
+          eventLocation: data.eventLocation,
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Failed to notify artist ${artist.id} about new booking: ${error.message}`,
+        );
+      }
     }
 
     return booking;
@@ -103,26 +109,60 @@ export class BookingsService {
     return booking;
   }
 
-  async findByClient(clientId: string) {
-    return this.prisma.booking.findMany({
-      where: { clientId },
-      include: {
-        artistProfile: { include: { user: true } },
-        review: true,
+  async findByClient(clientId: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+
+    const [bookings, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where: { clientId },
+        skip,
+        take: limit,
+        include: {
+          artistProfile: { include: { user: true } },
+          review: true,
+        },
+        orderBy: { eventDate: "desc" },
+      }),
+      this.prisma.booking.count({ where: { clientId } }),
+    ]);
+
+    return {
+      data: bookings,
+      meta: {
+        total,
+        page,
+        limit,
+        pageCount: Math.ceil(total / limit),
       },
-      orderBy: { eventDate: "desc" },
-    });
+    };
   }
 
-  async findByArtist(artistProfileId: string) {
-    return this.prisma.booking.findMany({
-      where: { artistProfileId },
-      include: {
-        client: true,
-        review: true,
+  async findByArtist(artistProfileId: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+
+    const [bookings, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where: { artistProfileId },
+        skip,
+        take: limit,
+        include: {
+          client: true,
+          review: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.booking.count({ where: { artistProfileId } }),
+    ]);
+
+    return {
+      data: bookings,
+      meta: {
+        total,
+        page,
+        limit,
+        pageCount: Math.ceil(total / limit),
       },
-      orderBy: { createdAt: "desc" },
-    });
+    };
   }
 
   async accept(bookingId: string, artistUserId: string) {
@@ -147,14 +187,20 @@ export class BookingsService {
     ]);
 
     const fullBooking = await this.findById(bookingId);
-    this.notificationsService.notifyClientBookingStatus({
-      clientPhone: fullBooking.client.phone,
-      clientEmail: fullBooking.client.email || undefined,
-      clientName: fullBooking.client.name,
-      artistName: fullBooking.artistProfile.groupName || "Artist",
-      status: "ACCEPTED",
-      eventDate: fullBooking.eventDate.toISOString().split("T")[0],
-    });
+    try {
+      await this.notificationsService.notifyClientBookingStatus({
+        clientPhone: fullBooking.client.phone,
+        clientEmail: fullBooking.client.email || undefined,
+        clientName: fullBooking.client.name,
+        artistName: fullBooking.artistProfile.groupName || "Artist",
+        status: "ACCEPTED",
+        eventDate: fullBooking.eventDate.toISOString().split("T")[0],
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to notify client ${fullBooking.clientId} about booking acceptance: ${error.message}`,
+      );
+    }
 
     return updated;
   }
@@ -177,14 +223,20 @@ export class BookingsService {
     });
 
     const fullBooking = await this.findById(bookingId);
-    this.notificationsService.notifyClientBookingStatus({
-      clientPhone: fullBooking.client.phone,
-      clientEmail: fullBooking.client.email || undefined,
-      clientName: fullBooking.client.name,
-      artistName: fullBooking.artistProfile.groupName || "Artist",
-      status: "DECLINED",
-      eventDate: fullBooking.eventDate.toISOString().split("T")[0],
-    });
+    try {
+      await this.notificationsService.notifyClientBookingStatus({
+        clientPhone: fullBooking.client.phone,
+        clientEmail: fullBooking.client.email || undefined,
+        clientName: fullBooking.client.name,
+        artistName: fullBooking.artistProfile.groupName || "Artist",
+        status: "DECLINED",
+        eventDate: fullBooking.eventDate.toISOString().split("T")[0],
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to notify client ${fullBooking.clientId} about booking decline: ${error.message}`,
+      );
+    }
 
     return updated;
   }

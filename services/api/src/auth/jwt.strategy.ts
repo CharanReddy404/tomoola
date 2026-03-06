@@ -12,13 +12,13 @@ interface JwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(config: ConfigService) {
     const secret = config.get<string>("JWT_SECRET");
-    if (!secret && config.get<string>("NODE_ENV") === "production") {
-      throw new Error("JWT_SECRET must be set in production");
+    if (!secret) {
+      throw new Error("JWT_SECRET is required in all environments. Please set it in your .env file.");
     }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: secret || "tomoola-dev-secret-change-in-production",
+      secretOrKey: secret,
     });
   }
 

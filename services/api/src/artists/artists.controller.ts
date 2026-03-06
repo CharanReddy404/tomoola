@@ -51,8 +51,18 @@ export class ArtistsController {
     @Query("artForm") artForm?: string,
     @Query("city") city?: string,
     @Query("search") search?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
   ) {
-    return this.artistsService.findAll({ artForm, city, search });
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? Math.min(parseInt(limit, 10), 100) : 20;
+    return this.artistsService.findAll({
+      artForm,
+      city,
+      search,
+      page: pageNum,
+      limit: limitNum,
+    });
   }
 
   @Get("art-form/:slug")
